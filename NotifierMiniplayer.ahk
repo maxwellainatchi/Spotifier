@@ -9,33 +9,7 @@
 ;;;      ███████║██║     ╚██████╔╝   ██║   ██║██║     ██║███████╗██║  ██║      ;;;
 ;;;;     ╚══════╝╚═╝      ╚═════╝    ╚═╝   ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝     ;;;;
 ;;;;;              (font name: ANSI Shadow, from patorjk.com)                ;;;;;
-;;;;   ╔═══════════════════════════════════════════════════════════════╗      ;;;;
-;;;    ║ ███████████████████████████████████████████████████████████████       ;;;
-;;;;   ║ ██  Spotifier: Spotify Notifications/Miniplayer              ██      ;;;;
-;;;;;  ║ ██  By Maxwell Ainatchi                                      ██     ;;;;;
-;;;;   ║ ██  v1.010                                                   ██      ;;;;
-;;;    ║ ██═══════════════════════════════════════════════════════════██       ;;;
-;;;    ║ ██═══════════════════════════════════════════════════════════██       ;;;
-;;;;   ║ ██  A free Spotify notifier/miniplayer. Only works when      ██      ;;;;
-;;;;;  ║ ██  Spotify main window is open, not minimized to tray.      ██     ;;;;;
-;;;;   ║ ██  Shift + Control + F12 to show/hide Miniplayer by default.██      ;;;;
-;;;    ║ ██───────────────────────────────────────────────────────────██       ;;;
-;;;;   ║ ██  KNOWN BUGS (as of v1.000):                               ██      ;;;;
-;;;;;  ║ ██     - when in aggressive mode, the Spotify main window    ██     ;;;;;
-;;;;   ║ ██       will be repeatedly forced to the front while the    ██      ;;;;
-;;;    ║ ██       notification window is open while the main window   ██       ;;;
-;;;;   ║ ██       being forced open.                                  ██      ;;;;
-;;;;;  ║ ██───────────────────────────────────────────────────────────██     ;;;;;
-;;;;   ║ ██  FOR FUTURE UPDATES (not implemented as of v1.010):       ██      ;;;;
-;;;    ║ ██     - put preferences in GUI window, not just editable    ██       ;;;
-;;;;   ║ ██       INI file.                                           ██      ;;;;
-;;;;;  ║ ██     - possible picture or gradient background             ██     ;;;;;
-;;;;   ║ ██     - drop shadows on buttons/prettify buttons            ██      ;;;;
-;;;    ║ ██     - investigate fetching title from the tray icon, so   ██       ;;;
-;;;;   ║ ██       even if the main window is minimized to the tray,   ██      ;;;;
-;;;;;  ║ ██       you can still get notifications                     ██     ;;;;;
-;;;;   ║ ██     - add "no tray icon" option                           ██      ;;;;
-;;;    ╚═███████████████████████████████████████████████████████████████       ;;;
+;;;;                                                                          ;;;;
 ;;;     ;     ;     ;     ;     ;     ;     ;     ;     ;     ;     ;     ;    ;;;
 ;;;;   ;;;   ;;;   ;;;   ;;;   ;;;   ;;;   ;;;   ;;;   ;;;   ;;;   ;;;   ;;;  ;;;; 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -52,18 +26,19 @@
 	GuiPosition = 4 ;location of the Gui: in order, top left, top right, bottom left, bottom right
 	Agressive = false ;If the app is aggressive, it will force Spotify to open if the main window isn't detected
 	Persistent = false ;If the app is persistent, the main window will not disappear
-	AlwaysOnTop = false ;Only applies if persistent
 
 ;DO NOT CHANGE - will possibly destroy functionality
 	Hidden = true ;whether the GUI is shown
 	Title = ;no initial title
-	PauseTitle = Spotify ;to check against
-	NoTitle = ;to check against
-	PauseMessage = Paused ;what to display if Spotify is paused
-	SpotifyClosedMessage = Please open the Spotify Main Window! `r`n Click to launch... ;what to display if the spotify window is closed
-	LoadingMessage = Opening Spotify...
-	GuiWindowTitle = Max Ainatchi - Spotify Notifications ;name of the window - not shown
-	SpotifyWindowClass = SpotifyMainWindow ;the ahk_class of the spotify main window
+
+	;Constants
+		PauseTitle = Spotify ;to check against
+		NoTitle = ;to check against
+		PauseMessage = Paused ;what to display if Spotify is paused
+		SpotifyClosedMessage = Please open the Spotify Main Window! `r`n Click to launch... ;what to display if the spotify window is closed
+		LoadingMessage = Opening Spotify...
+		GuiWindowTitle = Max Ainatchi - Spotify Notifications ;name of the window - not shown
+		SpotifyWindowClass = SpotifyMainWindow ;the ahk_class of the spotify main window
  
 	;File sources
 		SpotifySource = %userprofile%/AppData/Roaming/Spotify/spotify.exe ;source of the spotify app
@@ -86,13 +61,13 @@ initialize: ;set initialization params
 	Menu, Tray, NoStandard ;removes the standard menu items from the tray menu
 	Menu, Tray, Click, 1 ;click the icon once to launch the interface
 	Menu, Tray, Icon, %IconSource% ;sets the tray icon
-	Menu, Tray, Add, Open/Close MiniPlayer (F12), TriggerMiniPlayer ;add the open/close item
+	Menu, Tray, Add, Open/Close MiniPlayer (%MiniPlayerTrigger%), TriggerMiniPlayer ;add the open/close item
 	Menu, Tray, Add ;add a separator
 	Menu, Tray, Add, Open Preferences, OpenPreferences
 	Menu, Tray, Add, Reset Default Preferences, ResetPreferences
 	Menu, Tray, Add ;add a separator
 	Menu, Tray, Add, Exit, ExitApp ;add an exit button
-	Menu, Tray, Default, Open/Close MiniPlayer (F12) ;make the open/close the default option - makes the tray icon click do this
+	Menu, Tray, Default, Open/Close MiniPlayer (%MiniPlayerTrigger%) ;make the open/close the default option - makes the tray icon click do this
 	Return
 ;--------------------------------------------------------
 
@@ -101,13 +76,14 @@ SetPosition: ;set the gui position
 	yPos = 0 ;the top edge vertical position
 	SysGet, MonitorWorkArea, MonitorWorkArea ;find the area of the monitor
 	WinGetPos,,,GuiWidth, GuiHeight, %GuiWindowTitle% ;get the width and height of the gui window, which is dynamically calculated
-	if (GuiPosition == "1") { ;top left
+
+	if (GuiPosition == 1) { ;top left
 		xPos = 0
 		yPos = 0
-	} else if (GuiPosition == "2") { ;top right
+	} else if (GuiPosition == 2) { ;top right
 		xPos := MonitorWorkAreaRight - GuiWidth
 		yPos = 0
-	} else if (GuiPosition == "3") { ;bottom left 
+	} else if (GuiPosition == 3) { ;bottom left 
 		xPos = 0
 		yPos := MonitorWorkAreaBottom - GuiHeight
 	} else { ;bottom right
@@ -147,10 +123,10 @@ CheckWindow: ;checks to see if the window's title has changed
 			}
 			sleep, %CheckInterval% ;waits for CheckInterval seconds
 		}
-		;if (Persistent == false) { ;BROKEN
+		if (Persistent != "true") { ;BROKEN
 			Gui, destroy ;kills the Gui
 			hidden = true ;the window is no longer visible
-		;}
+		}
 	}
 
 	old = %MiniPlayerTrigger% ;the old hotkey
@@ -187,11 +163,7 @@ TriggerMiniPlayer: ;trigger the gui to open or close, as necessary
 CreateGui: ;create the gui and set the text
 	Gosub, ReloadPrefs ;reload the preferences before initializing the GUI
 
-	;if (Persistent == "true" && AlwaysOnTop == "false") { ;BROKEN
-	;	Gui, -SysMenu +Owner ;creates an immutable Gui
-	;} else {
-		Gui, +AlwaysOnTop -SysMenu +Owner ;creates an immutable Gui
-	;}
+	Gui, +AlwaysOnTop -SysMenu +Owner ;creates an immutable Gui
 
 	StringReplace, TextBody, AltTitle, - , `r`n Song: ;sets up the message to display
 	if (TextBody != PauseMessage and TextBody != SpotifyClosedMessage and TextBody != LoadingMessage) { ;so long as a song is playing
@@ -226,8 +198,7 @@ ReadAllPrefs: ;reads the preferences from the INI file
 	Gosub, ReadReconfigurablePrefs
 	IniRead, FontSize, %IniSource%, RestartRequired, FontSize, 12
 	IniRead, CheckInterval, %IniSource%, RestartRequired, CheckInterval, 100
-	IniRead, Persistent, %IniSource%, RestartRequired, Persistent, 100
-	IniRead, AlwaysOnTop, %IniSource%, RestartRequired, AlwaysOnTop, 100
+	IniRead, Persistent, %IniSource%, RestartRequired, Persistent, false
 	Return
 
 ReadReconfigurablePrefs: ;reads only those preferences that don't require restart
@@ -235,7 +206,7 @@ ReadReconfigurablePrefs: ;reads only those preferences that don't require restar
 	IniRead, GuiColor, %IniSource%, NoRestart, GuiColor, 009ACD
 	IniRead, MiniPlayerTrigger, %IniSource%, NoRestart, MiniPlayerTrigger, +^F12
 	IniRead, NotificationDisplayTime, %IniSource%, NoRestart, NotificationDisplayTime, 5
-	IniRead, GuiPosition, %IniSource%, NoRestart, GuiPosition, 4
+	IniRead, GuiPosition, %IniSource%, NoRestart, GuiPosition, %POS_BOTTOMRIGHT%
 	IniRead, Agressive, %IniSource%, NoRestart, Agressive, False
 	Return
 
@@ -250,7 +221,7 @@ ReloadPrefs: ;properly reloads the preferences configuration
 	Return
 
 OpenPreferences: 
-	Run %IniSource%
+	Run, notepad.exe %IniSource%
 	Return
 
 ResetPreferences:
